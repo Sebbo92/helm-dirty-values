@@ -22,4 +22,11 @@ This Python script checks for unused keys in a Helm chart's `values.yaml` file b
 ```bash
 python main.py [-h] --chart CHART [--additional-value-file ADDITIONAL_VALUE_FILE]
 python main.py --chart test --additional-value-file test.yaml
+
+# Output
+Unused keys in values.yaml:
+  - test.super
+Unused keys in test.yaml:
+  - alpha
+  - list
 ```
