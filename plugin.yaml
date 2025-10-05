@@ -1,0 +1,6 @@
+name: dirty-values
+version: "0.1.0"
+description: Checks for unused keys in a Helm chart's values files
+ignoreFlags: false
+platformCommand:
+  - command: python3 ${HELM_PLUGIN_DIR}/main.py
