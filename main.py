@@ -2,21 +2,26 @@ import os
 import yaml
 import re
 import argparse
+import sys
 from collections import defaultdict
 
 def load_values_yaml(values_file):
-    with open(values_file, 'r', encoding='utf-8') as file:
-        return yaml.safe_load(file)
+    try:
+        with open(values_file, 'r', encoding='utf-8') as file:
+            return yaml.safe_load(file)
+    except Exception as e:
+        print(f"{e}")
+        sys.exit(2)
 
 def merge_dicts(base, updates, source_map, source_file, prefix=""):
     """
     Recursively merge two dictionaries. Values from `updates` overwrite `base`.
     Tracks the source of each key in `source_map`.
     """
-    source_filename = os.path.basename(source_file)  # Extract only the filename
+    source_filename = os.path.basename(source_file)
     for key, value in updates.items():
         full_key = f"{prefix}.{key}" if prefix else key
-        source_map[full_key] = source_filename  # Store only the filename
+        source_map[full_key] = source_filename
         if isinstance(value, dict):
             # Ensure the base dictionary has the same structure
             if key not in base or not isinstance(base[key], dict):
@@ -43,25 +48,27 @@ def find_unused_keys(values, templates_dir, source_map):
 
     # Search for each key in the templates
     used_keys = set()
-    for root, _, files in os.walk(templates_dir):
-        for file in files:
-            if file.endswith((".yaml", ".tpl")):
-                with open(os.path.join(root, file), 'r', encoding='utf-8') as template_file:
-                    content = template_file.read()
-                    for key in flattened_keys:
-                        # Check if the key or any parent key is used
-                        key_parts = key.split('.')
-                        for i in range(len(key_parts)):
-                            parent_key = '.'.join(key_parts[:i + 1])
-                            key_pattern = re.compile(rf"\bValues\.{re.escape(parent_key)}\b")
-                            if key_pattern.search(content):
-                                used_keys.add(key)
-                                break
+    try:
+        for root, _, files in os.walk(templates_dir):
+            for file in files:
+                if file.endswith((".yaml", ".tpl")):
+                    with open(os.path.join(root, file), 'r', encoding='utf-8') as template_file:
+                        content = template_file.read()
+                        for key in flattened_keys:
+                            # Check if the key or any parent key is used
+                            key_parts = key.split('.')
+                            for i in range(len(key_parts)):
+                                parent_key = '.'.join(key_parts[:i + 1])
+                                key_pattern = re.compile(rf"\bValues\.{re.escape(parent_key)}\b")
+                                if key_pattern.search(content):
+                                    used_keys.add(key)
+                                    break
+    except Exception as e:
+        print(f"{e}")
+        sys.exit(2)
 
-    # Find unused keys
     unused_keys = [key for key in flattened_keys if key not in used_keys]
 
-    # Map unused keys to their source files
     unused_keys_with_sources = [(key, source_map.get(key, "unknown source")) for key in unused_keys]
 
     return unused_keys_with_sources
@@ -76,35 +83,20 @@ def main():
     )
     args = parser.parse_args()
 
-    chart_path = args.chart
-    values_file = os.path.join(chart_path, "values.yaml")
+    chart_path = os.path.abspath(args.chart)
+    default_values_file = os.path.join(chart_path, "values.yaml")
     templates_dir = os.path.join(chart_path, "templates")
 
-    if not os.path.exists(values_file):
-        print(f"Values file '{values_file}' not found.")
-        return
-
-    if not os.path.exists(templates_dir):
-        print(f"Templates directory '{templates_dir}' not found.")
-        return
-
-    # Load the base values.yaml
-    values = load_values_yaml(values_file)
+    values = load_values_yaml(default_values_file)
     source_map = {}
-    # Ensure the source_map is populated with the correct path for values.yaml
-    merge_dicts({}, values, source_map, values_file)
+    merge_dicts({}, values, source_map, default_values_file)
 
-    # Merge additional values files if provided
     if args.additional_value_file:
-        for additional_file in args.additional_value_file:
-            additional_file_path = os.path.join(chart_path, additional_file)
-            if not os.path.exists(additional_file_path):
-                print(f"Additional values file '{additional_file}' not found in chart directory.")
-                continue
-            additional_values = load_values_yaml(additional_file_path)
-            merge_dicts(values, additional_values, source_map, additional_file_path)
+            for additional_file in args.additional_value_file:
+                additional_file_path = os.path.join(chart_path, additional_file)
+                additional_values = load_values_yaml(additional_file_path)
+                merge_dicts(values, additional_values, source_map, additional_file_path)
 
-    # Find unused keys
     unused_keys_with_sources = find_unused_keys(values, templates_dir, source_map)
 
     if unused_keys_with_sources:
@@ -118,7 +110,7 @@ def main():
             for key in keys:
                 print(f"  - {key}")
     else:
-        print("All keys in values.yaml are used in the templates.")
+        print("All keys in values files are used in the templates.")
 
 if __name__ == "__main__":
     main()
