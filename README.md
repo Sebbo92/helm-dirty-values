@@ -1,6 +1,6 @@
 # Overview
 
-This Helm plugin checks for unused keys in a Helm chart's `values.yaml` file by scanning the `templates` directory for references to those keys.
+This Helm plugin checks for unused keys in a Helm chart's `values.yaml` and additional yaml files by scanning the `templates` directory for references to those keys.
 
 ## Features
 - Parses the `values.yaml` file and additional values files to extract all keys, including nested keys.
@@ -9,19 +9,21 @@ This Helm plugin checks for unused keys in a Helm chart's `values.yaml` file by 
 - Groups unused keys by their source file for better clarity.
 
 ## Requirements
-- Python 3.13.7 or higher
+- Helm 3.x
+- Python 3.x
 
 ## Installation
-1. Clone this repository or copy the script to your local machine.
-2. Install the required Python package:
+1. Run the command `helm plugin install https://github.com/Sebbo92/helm-dirty-values`
+2. Install the required Python modules:
    ```bash
    pip install -r requirements.txt
    ```
 
 ## Usage
 ```bash
-python main.py [-h] --chart CHART [--additional-value-file ADDITIONAL_VALUE_FILE]
-python main.py --chart test --additional-value-file test.yaml
+helm dirty-values main.py [-h] --chart CHART [--additional-value-file ADDITIONAL_VALUE_FILE]
+# Example within this repository
+helm dirty-values --chart test --additional-value-file test.yaml
 
 # Output
 Unused keys in values.yaml:
