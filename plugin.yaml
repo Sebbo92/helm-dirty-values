@@ -3,10 +3,9 @@ version: "0.2.0"
 description: Checks for unused keys in a Helm chart's values files
 ignoreFlags: false
 platformCommand:
-  - command: python3 ${HELM_PLUGIN_DIR}/main.py
+  - os: linux
+    command: python3 ${HELM_PLUGIN_DIR}/main.py
 platformHooks:
   install:
     - os: linux
-      command: ${HELM_PLUGIN_DIR}/scripts/install.sh
-    - os: windows
-      command: ${HELM_PLUGIN_DIR}/scripts/install.sh
+      command: bash ${HELM_PLUGIN_DIR}/scripts/install.sh
