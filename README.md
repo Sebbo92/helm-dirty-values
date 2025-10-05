@@ -1,6 +1,6 @@
-# Helm Values Checker
+# Overview
 
-This Python script checks for unused keys in a Helm chart's `values.yaml` file by scanning the `templates` directory for references to those keys.
+This Helm plugin checks for unused keys in a Helm chart's `values.yaml` file by scanning the `templates` directory for references to those keys.
 
 ## Features
 - Parses the `values.yaml` file and additional values files to extract all keys, including nested keys.
