@@ -22,5 +22,5 @@ jobs:
           args:
             -Dsonar.projectKey=Sebbo92_helm-dirty-values
             -Dsonar.organization=sebbo92
-            -DDsonar.exclusions=./test, plugin.yaml
+            -DDsonar.exclusions=./test, ./plugin.yaml
           projectBaseDir: .
