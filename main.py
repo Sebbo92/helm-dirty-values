@@ -37,7 +37,12 @@ def load_additional_yaml_files(additional_values):
         values.append(load_yaml_file(file))
     return values
 
-def find_unused_keys(values, templates_dir, source_map=None):
+def find_unused_keys(values, templates_dir, file_name=None):
+    """
+    Find unused keys in the provided values dictionary by checking against
+    the Helm templates in the specified directory.
+    Return a list of unused keys.
+    """
     unused_keys = []
 
     def flatten_keys(d, prefix=''):
@@ -68,73 +73,17 @@ def find_unused_keys(values, templates_dir, source_map=None):
                                 break
 
     unused_keys = [key for key in flattened_keys if key not in used_keys]
-    return [(key, None) for key in unused_keys]
 
-def collect_yaml_keys(data, prefix=""):
-    keys = set()
-    if isinstance(data, dict):
-        for key, value in data.items():
-            full_key = f"{prefix}.{key}" if prefix else key
-            keys.add(full_key)
-            keys.update(collect_yaml_keys(value, full_key))
-    return keys
-
-
-def extract_used_values_from_templates(templates_dir):
-    used_keys = set()
-    pattern = re.compile(r'\.Values(?:\.([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*))?')
-
-    for root, _, files in os.walk(templates_dir):
-        for file in files:
-            if file.endswith(('.yaml', '.tpl')):
-                with open(os.path.join(root, file), 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    for match in pattern.findall(content):
-                        if match:
-                            used_keys.add(match)
-                        else:
-                            used_keys.add("")  # This handles bare `.Values`
-    return used_keys
-
-
-def merge_dicts(base, updates, source_map, source_file, prefix=""):
-    """
-    Recursively merge two dictionaries. Values from `updates` overwrite `base`.
-    Track the source of each key in `source_map`.
-    """
-    source_filename = os.path.basename(source_file)
-    for key, value in updates.items():
-        full_key = f"{prefix}.{key}" if prefix else key
-        source_map[full_key] = source_filename
-        if isinstance(value, dict):
-            # Ensure the base dictionary has the same structure
-            if key not in base or not isinstance(base[key], dict):
-                base[key] = {}
-            merge_dicts(base[key], value, source_map, source_file, full_key)
+    if file_name is not None:
+        if unused_keys:
+            print(f"Unused keys in {file_name}:")
+            for key in unused_keys:
+                print(f"  - {key}")
         else:
-            base[key] = value
+            print(f"All keys in {file_name} are used.")
 
-def find_all_templates_and_values(chart_path):
-    """
-    Find all templates and values.yaml files in the main chart and its subcharts.
-    """
-    templates_dirs = []
-    values_files = []
+    return unused_keys
 
-    # Hauptchart
-    templates_dirs.append(os.path.join(chart_path, "templates"))
-    values_files.append(os.path.join(chart_path, "values.yaml"))
-
-    # Subcharts
-    subcharts_dir = os.path.join(chart_path, "charts")
-    if os.path.exists(subcharts_dir):
-        for subchart in os.listdir(subcharts_dir):
-            subchart_path = os.path.join(subcharts_dir, subchart)
-            if os.path.isdir(subchart_path):
-                templates_dirs.append(os.path.join(subchart_path, "templates"))
-                values_files.append(os.path.join(subchart_path, "values.yaml"))
-
-    return templates_dirs, values_files
 
 def main():
     parser = argparse.ArgumentParser(description="Check unused keys in Helm values.yaml.")
@@ -149,28 +98,14 @@ def main():
     templates_path = os.path.join(chart_path, "templates")
 
     default_values_yaml = load_yaml_file(f"{chart_path}/values.yaml")
-    unused_keys = find_unused_keys(default_values_yaml, templates_path)
-    if unused_keys:
-        print(f"Unused keys in values.yaml:")
-        for key, _ in unused_keys:
-            print(f"  - {key}")
-    else:
-        print("All keys in values.yaml are used.")
+
+    find_unused_keys(default_values_yaml, templates_path, file_name="values.yaml")
 
     if args.additional_value_file:
         additional_paths = [os.path.join(chart_path, f) for f in args.additional_value_file]
         additional_values_yamls = load_additional_yaml_files(additional_paths)
         for file_path, values_dict in zip(additional_paths, additional_values_yamls):
-            file_name = os.path.basename(file_path)
-            unused_keys = find_unused_keys(values_dict, templates_path)
-            if unused_keys:
-                print(f"Unused keys in {file_name}:")
-                for key, _ in unused_keys:
-                    print(f"  - {key}")
-            else:
-                print(f"All keys in {file_name} are used.")
-    else:
-        print("No additional values files provided.")
+            find_unused_keys(values_dict, templates_path, file_name=os.path.basename(file_path))
 
 if __name__ == "__main__":
     main()
